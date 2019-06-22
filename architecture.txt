@@ -8,7 +8,7 @@
 - Handling writes to files: watch file system (e.g. using inotify) and broadcast/multicast file (using communication layer).
 - Handling new files from network: callback(File) -> check if new file is not conflicting with current one, if there's no conflict AND CONDITION update the file,
   otherwise call ConflictResolution callback and after it's resolved treat it as a write (broadcast file in the network).
-  When new file is received and it's history contains merge from local to remote -> save current version and switch to new one.
+  When new file is received and it's history contains merge from local to remote -> save current version and switch to new one. (all merges are saved).
 
  CONDITION - longest valid chain/newest modification time -- option, can be changed
 
