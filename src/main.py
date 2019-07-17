@@ -1,3 +1,4 @@
 import synchronization
+from conflict_resolution import resolve_conflict 
 
-sync = synchronization.SyncWorker("XXX", lambda file1, file2 : print(str(file1) + " " + str(file2)))
+sync = synchronization.SyncWorker("/tmp/xxx", resolve_conflict)
