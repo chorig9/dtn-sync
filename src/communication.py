@@ -1,9 +1,10 @@
 import socket
-import pickle
 import threading
 import io
 import os
 import utils
+
+from serialization import Serializable
 
 # Class responsible for communictation. Allows sending files to the network
 # via send_file() function and calls registerd on_receive_callback every time
@@ -13,22 +14,10 @@ import utils
 #
 class Communicator:
     # Definiton of data which is beeing sent over the network
-    class Data:
+    class Data(Serializable):
         def __init__(self):
             self.file_content = None
             self.file_info = None
-
-        def to_bytes(self):
-            buffer = io.BytesIO()
-            pickle.dump(self, buffer)
-
-            return buffer.getbuffer()
-
-        @staticmethod
-        def from_bytes(buffer):
-            data = pickle.loads(buffer)
-            return data
-
 
     # on_receive_callback takes 2 parameters - instance of File class which
     # represents the file itself and path to where this file is stored

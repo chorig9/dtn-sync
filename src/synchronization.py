@@ -1,8 +1,11 @@
-import communication
 import pyinotify
 import time
 import threading
 import os
+import errno
+
+from vcs import *
+import communication
 from file import FileInfo
 
 class UpdateMetric:
@@ -49,21 +52,40 @@ class SyncWorker(pyinotify.ProcessEvent):
         self.comm = communication.Communicator(port, self._on_file_received)
         self.files_watcher = Watcher(path, self)
 
+        self.vcs = VCS(path)
+
+        self.conflict_store_directory = os.path.join(path, ".conflicts")
+
+        try:
+            os.mkdir(self.conflict_store_directory)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
     def _on_file_received(self, file, store_path):
         print(file.file_basename, store_path)
         # move and overwrite if exists
         # shutil.move(store_path, file.pathname)
 
     ############ defines handlers for different fs events ############
+    # XXX currently, only one level directory is supoorted - changes
+    # in sub directoreis are NOT handled
 
     def process_IN_CREATE(self, event):
         pass
 
     def process_IN_MODIFY(self, event):
-        # XXX does in_modify event gurantee write completion?
         dir = os.path.dirname(event.pathname)
         basename = os.path.basename(event.pathname)
-        self.comm.send_file(dir, FileInfo(basename))
+
+        file_info = None
+
+        # Update revision and time and save
+        with self.vcs.file_version_history(basename) as file_vcs:
+            file_vcs.increment_version()
+            file_info = FileInfo(basename, file_vcs)
+
+        self.comm.send_file(dir, file_info)
 
     def process_IN_DELETE(self, event):
         pass

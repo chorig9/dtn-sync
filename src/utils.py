@@ -11,3 +11,12 @@ def get_tmp_folder():
     os.mkdir(dir)
 
     return dir
+
+def run_command(self, command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    std, stderr = process.communicate()
+
+    if stderr:
+        raise Exception(stderr)
+
+    return std
