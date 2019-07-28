@@ -25,6 +25,11 @@ class Communicator:
         self.port = port
         self.on_receive_callback = on_receive_callback
 
+        # XXX this is hack to obtain local ip address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        self.local_address = s.getsockname()[0]
+
         # Folder in which every incoming data will be stored
         self.store_folder = utils.get_tmp_folder()
 
@@ -42,6 +47,13 @@ class Communicator:
         while True:
             buffer = bytearray(4096) # XXX bigger buffer size/split recv
             nbytes, addr = self.client.recvfrom_into(buffer)
+
+            incoming_addr, _ = addr
+
+            # Ignore messages from self
+            if incoming_addr == self.local_address:
+                return
+
             data = Communicator.Data.from_bytes(buffer)
             
             # Writes received file content to a file

@@ -1,5 +1,6 @@
 import random
 import string
+import subprocess
 import os
 
 def generate_random_name(length = 8):
@@ -12,9 +13,23 @@ def get_tmp_folder():
 
     return dir
 
-def run_command(self, command):
+def get_tmp_filename():
+    path = os.path.join("/tmp", generate_random_name())
+    return path
+
+def run_command(command, env_vars):
+    for env in env_vars:
+        name, value = env
+        os.environ[name] = value
+
+    print(command)
+
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     std, stderr = process.communicate()
+
+    for env in env_vars:
+        name, value = env
+        os.environ[name] = ""
 
     if stderr:
         raise Exception(stderr)

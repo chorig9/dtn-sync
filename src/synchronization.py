@@ -48,6 +48,7 @@ class SyncWorker(pyinotify.ProcessEvent):
     def __init__(self, path, port, conflict_resolution_callback, update_metric=UpdateMetric.LONGEST_CHAIN):
         self.conflict_resolution_callback = conflict_resolution_callback
         self.update_metric = update_metric
+        self.directory = path
 
         self.comm = communication.Communicator(port, self._on_file_received)
         self.files_watcher = Watcher(path, self)
@@ -56,6 +57,8 @@ class SyncWorker(pyinotify.ProcessEvent):
 
         self.conflict_store_directory = os.path.join(path, ".conflicts")
 
+        self.update_in_progress = {""}
+
         try:
             os.mkdir(self.conflict_store_directory)
         except OSError as e:
@@ -63,9 +66,29 @@ class SyncWorker(pyinotify.ProcessEvent):
                 raise
 
     def _on_file_received(self, file, store_path):
+        # XXX: remove print
         print(file.file_basename, store_path)
-        # move and overwrite if exists
-        # shutil.move(store_path, file.pathname)
+
+        file_vcs = self.vcs.file_version_history(file.file_basename)
+
+        self.update_in_progress.add(file.file_basename)
+        try:
+            file_vcs.apply_patch(file.patch)
+        except Exception as e:
+            print(e)
+        self.update_in_progress.remove(file.file_basename)
+
+    def update_file_info(self, basename):
+        file_vcs = self.vcs.file_version_history(basename)
+        file_vcs.commit()
+        patch = file_vcs.create_patch()
+
+        file_info = FileInfo(basename, patch)
+        self.comm.send_file(self.directory, file_info)
+
+    # If, file should not be processed (because it is metadata) returns true
+    def skip_file(self, filename):
+        return filename.startswith(".")
 
     ############ defines handlers for different fs events ############
     # XXX currently, only one level directory is supoorted - changes
@@ -75,17 +98,7 @@ class SyncWorker(pyinotify.ProcessEvent):
         pass
 
     def process_IN_MODIFY(self, event):
-        dir = os.path.dirname(event.pathname)
-        basename = os.path.basename(event.pathname)
-
-        file_info = None
-
-        # Update revision and time and save
-        with self.vcs.file_version_history(basename) as file_vcs:
-            file_vcs.increment_version()
-            file_info = FileInfo(basename, file_vcs)
-
-        self.comm.send_file(dir, file_info)
+        pass
 
     def process_IN_DELETE(self, event):
         pass
@@ -94,7 +107,19 @@ class SyncWorker(pyinotify.ProcessEvent):
         pass
 
     def process_IN_CLOSE_WRITE(self, event):
-        pass
+        basename = os.path.basename(event.pathname)
+
+        if self.skip_file(basename):
+            return
+
+        print(os.listdir(os.path.dirname(event.pathname)))
+
+        # Check if file is being updated
+        # This is a workaround for infinite loop which would occur
+        # when file is updated in _on_file_received callback (git will modify the file
+        # which will trigger this event which will send update to other nodes, etc.)
+        if not basename in self.update_in_progress:
+            self.update_file_info(basename)
 
     def process_IN_CLOSE_NOWRITE(self, event):
         pass
