@@ -1,5 +1,6 @@
 import argparse
 import synchronization
+import monitor
 
 from conflict_resolution import resolve_conflict 
 
@@ -10,3 +11,4 @@ parser.add_argument("-d", "--directory", help="Directory which will be synchroni
 args = parser.parse_args()
 
 sync = synchronization.SyncWorker(args.directory, args.port, resolve_conflict)
+monitor = monitor.Monitor(args.directory, sync)

@@ -1,5 +1,4 @@
 import socket
-import pickle
 import threading
 import io
 import os
@@ -12,32 +11,16 @@ import utils
 # Also responsible for broadcasting data to other nodes in DTN.
 #
 class Communicator:
-    # Definiton of data which is beeing sent over the network
-    class Data:
-        def __init__(self):
-            self.file_content = None
-            self.file_info = None
-
-        def to_bytes(self):
-            buffer = io.BytesIO()
-            pickle.dump(self, buffer)
-
-            return buffer.getbuffer()
-
-        @staticmethod
-        def from_bytes(buffer):
-            data = pickle.loads(buffer)
-            return data
-
-
     # on_receive_callback takes 2 parameters - instance of File class which
     # represents the file itself and path to where this file is stored
     def __init__(self, port, on_receive_callback):
         self.port = port
         self.on_receive_callback = on_receive_callback
 
-        # Folder in which every incoming data will be stored
-        self.store_folder = utils.get_tmp_folder()
+        # XXX this is hack to obtain local ip address - replace with uuid
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        self.local_address = s.getsockname()[0]
 
         self.out_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.out_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -53,25 +36,16 @@ class Communicator:
         while True:
             buffer = bytearray(4096) # XXX bigger buffer size/split recv
             nbytes, addr = self.client.recvfrom_into(buffer)
-            data = Communicator.Data.from_bytes(buffer)
-            
-            # Writes received file content to a file
-            received_file = os.path.join(self.store_folder, data.file_info.file_basename)
-            with open(received_file, 'wb+') as f:
-                f.write(data.file_content)
 
-            # Call callback with file_info and path to received file
-            self.on_receive_callback(data.file_info, received_file)
+            incoming_addr, _ = addr
 
-    # root_dir - directory in which file_info.file_basaneme file is located
-    # file_info - instance of FileInfo class
-    def send_file(self, root_dir, file_info):
-        data = Communicator.Data()
+            # XXX Ignore messages from self
+            if incoming_addr == self.local_address:
+                continue
 
-        data.file_info = file_info
+            # Call callback with data
+            self.on_receive_callback(buffer)
 
-        with open(os.path.join(root_dir, file_info.file_basename), 'rb') as f:
-            data.file_content = f.read()
-
+    def send(self, data):
         # Broadcast data
-        self.out_sock.sendto(data.to_bytes(), ('255.255.255.255', self.port))
+        self.out_sock.sendto(data, ('255.255.255.255', self.port))

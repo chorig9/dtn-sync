@@ -1,81 +1,45 @@
-import communication
-import pyinotify
-import time
-import threading
 import os
-from file import FileInfo
 
-class UpdateMetric:
-    LONGEST_CHAIN = 1
-    NEWEST = 2
-
-# Watches for changes in a directory
-# http://seb.dbzteam.org/pyinotify/
-class Watcher:
-    def __init__(self, path, event_handler, interval=1):
-        self.interval = interval
-
-        # watched events
-        mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE |\
-               pyinotify.IN_MODIFY | pyinotify.IN_OPEN |\
-               pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CLOSE_NOWRITE
-
-        wm = pyinotify.WatchManager()
-
-        # Check directory for events every 1000ms
-        self.notifier = pyinotify.Notifier(wm, event_handler, timeout=self.interval * 1000)
-        wdd = wm.add_watch(path, mask)
-
-        self._run_check_events()
-
-    # Periodically check events and make actions (defined in EventHandler)
-    def _run_check_events(self):
-        self._check_events()
-        threading.Timer(self.interval, self._run_check_events).start()
-
-    def _check_events(self):
-        self.notifier.process_events()
-        while self.notifier.check_events():
-            self.notifier.read_events()
-            self.notifier.process_events()
+import vcs
+import communication
 
 # Class which monitores changes to local files and sends updates to other DTN nodes.
 # It's also responsible for handling received files by calling conflict_resolution_callback
-class SyncWorker(pyinotify.ProcessEvent):
-    def __init__(self, path, port, conflict_resolution_callback, update_metric=UpdateMetric.LONGEST_CHAIN):
+class SyncWorker:
+    def __init__(self, directory, port, conflict_resolution_callback):
         self.conflict_resolution_callback = conflict_resolution_callback
-        self.update_metric = update_metric
+        self.comm = communication.Communicator(port, self._on_data_received)
+        self.vcs = vcs.VCS(directory)
 
-        self.comm = communication.Communicator(port, self._on_file_received)
-        self.files_watcher = Watcher(path, self)
+        self.update_in_progress = {""}
 
-    def _on_file_received(self, file, store_path):
-        print(file.file_basename, store_path)
-        # move and overwrite if exists
-        # shutil.move(store_path, file.pathname)
+    def _on_data_received(self, buffer):
+        patch = vcs.FilePatch.from_bytes(buffer)
 
-    ############ defines handlers for different fs events ############
+        print("received: ", patch.file_basename, patch.get_version(), patch.diff)
+        
+        with self.vcs.file_version_control(patch.file_basename) as local_file_vcs:
+            print(patch.get_version(), local_file_vcs.get_version())
+            if patch.get_version() > local_file_vcs.get_version():
+                self.update_in_progress.add(patch.file_basename)
+                local_file_vcs.apply_patch(patch)
 
-    def process_IN_CREATE(self, event):
-        pass
+    def file_updated(self, pathname):
+        print("Update file: ", pathname)
 
-    def process_IN_MODIFY(self, event):
-        # XXX does in_modify event gurantee write completion?
-        dir = os.path.dirname(event.pathname)
-        basename = os.path.basename(event.pathname)
-        self.comm.send_file(dir, FileInfo(basename))
+        dir = os.path.dirname(pathname)
+        basename = os.path.basename(pathname)
 
-    def process_IN_DELETE(self, event):
-        pass
+        # Check if file is being updated
+        # This is a workaround for infinite loop which would occur
+        # when file is updated in _on_file_received callback (git will modify the file
+        # which will trigger this event which will send update to other nodes, etc.)
+        if basename in self.update_in_progress:
+            self.update_in_progress.remove(basename)
+            return
 
-    def process_IN_OPEN(self, event):
-        pass
-
-    def process_IN_CLOSE_WRITE(self, event):
-        pass
-
-    def process_IN_CLOSE_NOWRITE(self, event):
-        pass
-
-    ##################################################################
+        # Update revision and time and save
+        with self.vcs.file_version_control(basename) as file_vcs:
+            file_vcs.commit()
+            self.comm.send(file_vcs.create_patch().to_bytes())
     
