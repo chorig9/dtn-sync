@@ -42,11 +42,11 @@ class Watcher:
 # Class which monitores changes to local files and sends updates to other DTN nodes.
 # It's also responsible for handling received files by calling conflict_resolution_callback
 class SyncWorker(pyinotify.ProcessEvent):
-    def __init__(self, path, conflict_resolution_callback, update_metric=UpdateMetric.LONGEST_CHAIN):
+    def __init__(self, path, port, conflict_resolution_callback, update_metric=UpdateMetric.LONGEST_CHAIN):
         self.conflict_resolution_callback = conflict_resolution_callback
         self.update_metric = update_metric
 
-        self.comm = communication.Communicator(self._on_file_received)
+        self.comm = communication.Communicator(port, self._on_file_received)
         self.files_watcher = Watcher(path, self)
 
     def _on_file_received(self, file, store_path):

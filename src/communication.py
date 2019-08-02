@@ -3,6 +3,7 @@ import pickle
 import threading
 import io
 import os
+import utils
 
 # Class responsible for communictation. Allows sending files to the network
 # via send_file() function and calls registerd on_receive_callback every time
@@ -11,10 +12,6 @@ import os
 # Also responsible for broadcasting data to other nodes in DTN.
 #
 class Communicator:
-    LISTEN_PORT = 54321
-    SEND_PORT = 12345
-    STORE_FOLDER = '/tmp/dtn-store'
-
     # Definiton of data which is beeing sent over the network
     class Data:
         def __init__(self):
@@ -35,15 +32,19 @@ class Communicator:
 
     # on_receive_callback takes 2 parameters - instance of File class which
     # represents the file itself and path to where this file is stored
-    def __init__(self, on_receive_callback):
+    def __init__(self, port, on_receive_callback):
+        self.port = port
         self.on_receive_callback = on_receive_callback
+
+        # Folder in which every incoming data will be stored
+        self.store_folder = utils.get_tmp_folder()
 
         self.out_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.out_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         self.client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.client.bind(("", Communicator.LISTEN_PORT))
+        self.client.bind(("", self.port))
 
         self.listen_thread = threading.Thread(target=self.listen)
         self.listen_thread.start()
@@ -55,7 +56,7 @@ class Communicator:
             data = Communicator.Data.from_bytes(buffer)
             
             # Writes received file content to a file
-            received_file = os.path.join(Communicator.STORE_FOLDER, data.file_info.file_basename)
+            received_file = os.path.join(self.store_folder, data.file_info.file_basename)
             with open(received_file, 'wb+') as f:
                 f.write(data.file_content)
 
@@ -73,4 +74,4 @@ class Communicator:
             data.file_content = f.read()
 
         # Broadcast data
-        self.out_sock.sendto(data.to_bytes(), ('255.255.255.255', Communicator.LISTEN_PORT))
+        self.out_sock.sendto(data.to_bytes(), ('255.255.255.255', self.port))
