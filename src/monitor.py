@@ -44,18 +44,19 @@ class Monitor(pyinotify.ProcessEvent):
     # XXX currently, only one level directory is supoorted - changes
     # in sub directoreis are NOT handled
     def process_IN_CREATE(self, event):
-        pass
+        print("In create")
 
     def process_IN_MODIFY(self, event):
         pass
 
     def process_IN_DELETE(self, event):
-        pass
+        print("In delete")
 
     def process_IN_OPEN(self, event):
-        pass
+        print("In open")
 
     def process_IN_CLOSE_WRITE(self, event):
+        print("In close")
         self.sync_worker.file_updated(event.pathname)
 
     def process_IN_CLOSE_NOWRITE(self, event):

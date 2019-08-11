@@ -1,0 +1,7 @@
+System can be configured to query nodes for latest version of a file regularly.
+Proper configuration (synchronizing before writing to a file) should prevent most conflicts.
+
+In case of conflict, it is presented to the user to fix. (this can only arise when file is being edited and some other node send updated version).
+Only nodes which have all conflicts resolved can present it's file version.
+
+Eventual consistency guaranteed - all nodes will have the same history eventually.
