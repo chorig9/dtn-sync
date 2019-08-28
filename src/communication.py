@@ -44,8 +44,12 @@ class Communicator:
                 continue
 
             # Call callback with data
-            self.on_receive_callback(buffer)
+            self.on_receive_callback(buffer, incoming_addr)
 
-    def send(self, data):
+    def broadcast(self, data):
         # Broadcast data
         self.out_sock.sendto(data, ('255.255.255.255', self.port))
+
+    def send(self, data, address):
+        # Broadcast data
+        self.out_sock.sendto(data, (address, self.port))

@@ -1,6 +1,7 @@
 import argparse
 import synchronization
 import monitor
+import command_prompt
 
 from conflict_resolution import resolve_conflict 
 
@@ -12,3 +13,4 @@ args = parser.parse_args()
 
 sync = synchronization.SyncWorker(args.directory, args.port, resolve_conflict)
 monitor = monitor.Monitor(args.directory, sync)
+prompt = command_prompt.CommandPrompt(sync)

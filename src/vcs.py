@@ -4,6 +4,7 @@ import errno
 import time
 
 from serialization import Serializable
+from enum import Enum
 
 # This structrue contains all information about file version (it is stored on-disk)
 class VersionHistory(Serializable):
@@ -12,10 +13,17 @@ class VersionHistory(Serializable):
 
 # Class representing patch to a file. Holds basename of file, version and patch data (diff)
 class FilePatch(Serializable):
-    def __init__(self, file_basename, version, diff):
+    class Type(Enum):
+        CONTENT = 1
+        QUERY = 2
+        ANSWER = 3
+        REQUEST = 4
+
+    def __init__(self, file_basename, version, diff, type):
         self.file_basename = file_basename
         self.diff = diff
         self.version = version
+        self.type = type
 
     def get_version(self):
         return self.version.timestamp
@@ -41,9 +49,12 @@ class FileVersionControl:
     def get_version(self):
         return self.version_history.timestamp
 
-    def create_patch(self, from_version=None):
-        with open(self.file_path, "rb") as f:
-            return FilePatch(os.path.basename(self.file_path), self.version_history, f.read())
+    def create_patch(self, type, from_version=None):
+        patch = FilePatch(os.path.basename(self.file_path), self.version_history, None, type)
+        if type == FilePatch.Type.CONTENT:
+            with open(self.file_path, "rb") as f:
+                patch.diff = f.read()
+        return patch
 
     def apply_patch(self, patch):
         with open(self.file_path, "wb+") as f:
