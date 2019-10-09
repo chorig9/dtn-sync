@@ -1,15 +1,22 @@
 {
+  "config": {
+    "ip4_prefix": "10.83.0.0/16",
+    "dev_prefix": "eth"
+  },
 	"networks": [
 		{
-			"id":0,
-			"ip4_prefix":"10.83.0.0/16"
+          "id": 0
+        },
+      {
+        "id": 1
 		}
 	],
 	"nodes":[
 		{
 			"id":0,
 			"networks":[
-				0
+              0,
+              1
 			]
 		},
 		{
@@ -23,6 +30,12 @@
 			"id":2,
 			"networks":[
 				0
+            ]
+        },
+      {
+        "id": 3,
+        "networks": [
+          1
 			]
 
 		}

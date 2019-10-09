@@ -1,16 +1,14 @@
-# TODO: add node's connections
-
-
 class EnvParser:
     def __init__(self, data):
         self.networks = []
         self.nodes = []
+        self.ip4_prefix = data['config']["ip4_prefix"] if "ip4_prefix" in data['config'].keys() else None
+        self.ip6_prefix = data['config']["ip6_prefix"] if "ip6_prefix" in data['config'].keys() else None
+        self.dev_prefix = data['config']['dev_prefix']
         for net in data["networks"]:
             self.networks.append(
                 {
                     "id": net["id"],
-                    "ip4_prefix": net["ip4_prefix"] if "ip4_prefix" in net else None,
-                    "ip6_prefix": net["ip6_prefix"] if "ip6_prefix" in net else None,
                     "nodes": []
                 }
             )

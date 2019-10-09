@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from env import Env
 import json
 
@@ -16,35 +16,39 @@ class AbstractTest(ABC):
     """
     Override this method if your test use local config
     """
+
     def load_config(self):
         self.config = \
-        {
-            "networks": [
-                {
-                    "id": 0,
-                    "ip4_prefix": "10.83.0.0/16"
-                }
-            ],
-            "nodes": [
-                {
-                    "id": 0,
-                    "networks": [
-                        0
-                    ]
+            {
+                "config": {
+                    "ip4_prefix": "10.83.0.0/16",
+                    "dev_prefix": "eth"
                 },
-                {
-                    "id": 1,
-                    "networks": [
-                        0
-                    ]
+                "networks": [
+                    {
+                        "id": 0,
+                    }
+                ],
+                "nodes": [
+                    {
+                        "id": 0,
+                        "networks": [
+                            0
+                        ]
+                    },
+                    {
+                        "id": 1,
+                        "networks": [
+                            0
+                        ]
 
-                },
-                {
-                    "id": 2,
-                    "networks": [
-                        0
-                    ]
+                    },
+                    {
+                        "id": 2,
+                        "networks": [
+                            0
+                        ]
 
-                }
-            ]
-        }
+                    }
+                ]
+            }
