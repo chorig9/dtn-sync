@@ -1,6 +1,3 @@
-# TODO: and app import and run on every node
-
-
 from env_parser import EnvParser
 
 from core import load_logging_config
@@ -10,7 +7,7 @@ from core.emulator.enumerations import NodeTypes, EventTypes
 
 
 class Env():
-    def __init__(self, env_config, silent=False):
+    def __init__(self, env_config, silent=True):
         if not silent:
             load_logging_config()
 
@@ -52,11 +49,15 @@ class Env():
     def get_node_ips(self, node):
         return self.nodes[node]["ips"]
 
-    def run_command(self, node, command):
-        self.nodes[node]["obj"].cmd(command)
+    def run_command(self, node, command, wait=True):
+        print(*command)
+        self.nodes[node]["obj"].client.cmd(command, wait)
 
     def run_icommand(self, node, command):
         self.nodes[node]["obj"].client.icmd(command)
+
+    def run_terminal(self, node):
+        self.nodes[node]["obj"].client.term()
 
     def finish(self):
         # shutdown session
