@@ -2,8 +2,6 @@ import pyinotify
 import time
 import threading
 
-from synchronization import SyncWorker
-
 # Watches for changes in a directory
 # http://seb.dbzteam.org/pyinotify/
 class Watcher:
@@ -13,12 +11,13 @@ class Watcher:
         # watched events
         mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE |\
                pyinotify.IN_MODIFY | pyinotify.IN_OPEN |\
-               pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CLOSE_NOWRITE
+               pyinotify.IN_CLOSE_WRITE | pyinotify.IN_CLOSE_NOWRITE |\
+               pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
 
         wm = pyinotify.WatchManager()
 
-        # Check directory for events every 1000ms
-        self.notifier = pyinotify.Notifier(wm, event_handler, timeout=self.interval * 1000)
+        # Check directory for events every 1000ms timeout=self.interval * 1000
+        self.notifier = pyinotify.Notifier(wm, event_handler, timeout=0)
         wdd = wm.add_watch(directory, mask)
 
         self._run_check_events()
@@ -35,9 +34,9 @@ class Watcher:
             self.notifier.process_events()
 
 class Monitor(pyinotify.ProcessEvent):
-    def __init__(self, directory, sync_worker):
+    def __init__(self, directory, callback):
         self.files_watcher = Watcher(directory, self)
-        self.sync_worker = sync_worker
+        self.callback = callback
 
     ############ defines handlers for different fs events ############
 
@@ -56,7 +55,13 @@ class Monitor(pyinotify.ProcessEvent):
         pass
 
     def process_IN_CLOSE_WRITE(self, event):
-        self.sync_worker.file_updated(event.pathname)
+        self.callback.file_updated(event.pathname)
 
     def process_IN_CLOSE_NOWRITE(self, event):
+        pass
+
+    def process_IN_MOVED_FROM(self, event):
+        pass
+
+    def process_IN_MOVED_TO(self, event):
         pass

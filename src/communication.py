@@ -4,6 +4,8 @@ import io
 import os
 import utils
 
+import logging
+
 # Class responsible for communictation. Allows sending files to the network
 # via send_file() function and calls registerd on_receive_callback every time
 # new file is received from the network.
@@ -19,8 +21,10 @@ class Communicator:
 
         # XXX this is hack to obtain local ip address - replace with uuid
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
+        s.connect(("10.83.0.1", 5001))
         self.local_address = s.getsockname()[0]
+
+        logging.debug("Local ip address: " + self.local_address)
 
         self.out_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.out_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -48,4 +52,4 @@ class Communicator:
 
     def send(self, data):
         # Broadcast data
-        self.out_sock.sendto(data, ('255.255.255.255', self.port))
+        self.out_sock.sendto(data, ('10.83.255.255', self.port))

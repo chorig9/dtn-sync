@@ -32,3 +32,6 @@ List of all nodes in tested environment. Each node is PC node in the network emu
 Each node contains of:
 * id - id of the node
 * networks - list of network's ids to which node is connected, or will be connected in the test
+
+## Running tests
+Running core daemon is required (run /etc/init.d/core-daemon start)
