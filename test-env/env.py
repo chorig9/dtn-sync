@@ -5,6 +5,8 @@ from core.emulator.coreemu import CoreEmu
 from core.emulator.emudata import IpPrefixes
 from core.emulator.enumerations import NodeTypes, EventTypes
 
+import os, shutil
+
 
 class Env():
     def __init__(self, env_config, silent=True):
@@ -18,7 +20,7 @@ class Env():
         else:
             self.prefix = IpPrefixes(ip6_prefix=self.envParser.ip6_prefix)
 
-        self.nodes = {}     #pc nodes
+        self.nodes = {}  # pc nodes
         self.networks = []  # switches nodes
 
         # create emulator instance for creating sessions and utility methods
@@ -27,14 +29,14 @@ class Env():
 
         # must be in configuration state for nodes to start, when using "node_add" below
         self.session.set_state(EventTypes.CONFIGURATION_STATE)
-        
+
         # create nodes
         for node in self.envParser.nodes:
             self.nodes[int(node["id"])] = {"obj": self.session.add_node(_type=NodeTypes.DEFAULT), "nets": [],
                                            "ip": None, "curr_net": None}
-        
+
         # create networks
-        for net in self.envParser.networks:        
+        for net in self.envParser.networks:
             self.networks.append(self.session.add_node(_type=NodeTypes.SWITCH))
             for node in net["nodes"]:
                 interface = self.prefix.create_interface(self.nodes[node["id"]]["obj"],
@@ -44,7 +46,11 @@ class Env():
                 self.nodes[node["id"]]["nets"].append({
                     "net": net["id"]
                 })
-
+        # certs
+        shutil.rmtree('certs', True)
+        self.__create_root_ca()
+        for node in self.nodes:
+            self.__create_node_cert(node)
         # instantiate session
         self.start()
 
@@ -108,5 +114,26 @@ class Env():
 
 
     def finish(self):
+        # remove certs
+        shutil.rmtree('certs')
         # shutdown session
         self.coreemu.shutdown()
+
+    # XXX: every cert's related things are store in "certs" directory just for now
+    def __create_root_ca(self):
+        try:
+            os.mkdir('certs')
+        except FileExistsError:
+            pass
+        os.system("openssl genrsa -out certs/rootCA.key 4096")
+        os.system(
+            "openssl req -x509 -new -nodes -key certs/rootCA.key -sha256 -days 1024 -subj \"/C=PL/ST=CA/O=DTN_TEST_ENV, Inc./CN=ROOT_CA\" -out certs/rootCA.crt")
+
+    def __create_node_cert(self, nodeId):
+        os.system("openssl genrsa -out certs/node" + str(nodeId) + ".key 2048")
+        os.system("openssl req -new -sha256 -key certs/node" + str(
+            nodeId) + ".key -subj \"/C=PL/ST=CA/O=DTN_TEST_ENV, Inc./CN=node" + str(
+            nodeId) + "\" -out certs/node" + str(nodeId) + ".csr")
+        os.system("openssl x509 -req -in certs/node" + str(
+            nodeId) + ".csr -CA certs/rootCA.crt -CAkey certs/rootCA.key -CAcreateserial -out certs/node" + str(
+            nodeId) + ".crt -days 500 -sha256")
