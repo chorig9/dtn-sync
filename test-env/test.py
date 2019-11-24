@@ -18,7 +18,7 @@ class BasicTests(AbstractTest):
 
         self.env.finish()
 
-class OutOfOrderPatchTests(AbstractTest):
+class PatchTests(AbstractTest):
 	TEST_PORT = "1234"
 	DTN_SOURCE_DIR = os.path.dirname(os.path.abspath(__file__)) + "/.."
 
@@ -27,6 +27,9 @@ class OutOfOrderPatchTests(AbstractTest):
 
 	def node_log_file(self, node):
 		return "/tmp/node%d_out.txt" % node
+
+	def node_name(self, node):
+		return "CoreNode%d" % (node + 1)
 
 	def setup_dirs(self):
 		try:
@@ -40,8 +43,8 @@ class OutOfOrderPatchTests(AbstractTest):
 
 	def init_node(self, node):
 		self.env.run_command(node, ["python3", 
-			OutOfOrderPatchTests.DTN_SOURCE_DIR + "/src/main.py",
-			"-p", OutOfOrderPatchTests.TEST_PORT,
+			PatchTests.DTN_SOURCE_DIR + "/src/main.py",
+			"-p", PatchTests.TEST_PORT,
 			"-d", self.node_dir_path(node),
 			"--stdout", self.node_log_file(node),
 			"--log", "debug"],
@@ -49,13 +52,13 @@ class OutOfOrderPatchTests(AbstractTest):
 
 	def write_to_file(self, file, content):
 		utils.run_command(["python3",
-			OutOfOrderPatchTests.DTN_SOURCE_DIR + "/test-env/write_to_file.py",
+			PatchTests.DTN_SOURCE_DIR + "/test-env/write_to_file.py",
 			"-f", file,
 			"-c", content])
 
 	def check_file_content(self, file, content):
 		utils.run_command(["python3",
-			OutOfOrderPatchTests.DTN_SOURCE_DIR + "/test-env/check_file_content.py",
+			PatchTests.DTN_SOURCE_DIR + "/test-env/check_file_content.py",
 			"-f", file,
 			"-c", content])
 
@@ -101,8 +104,8 @@ class OutOfOrderPatchTests(AbstractTest):
 		self.init_node(0)
 
 		self.env.run_command(2, ["python3", 
-			OutOfOrderPatchTests.DTN_SOURCE_DIR + "/test-env/packet_forwarder.py",
-			"-p", OutOfOrderPatchTests.TEST_PORT,
+			PatchTests.DTN_SOURCE_DIR + "/test-env/packet_forwarder.py",
+			"-p", PatchTests.TEST_PORT,
 			"-s", self.env.get_node_ip(1),
 			"-k", "2"],
 			False)
@@ -136,8 +139,8 @@ class OutOfOrderPatchTests(AbstractTest):
 		self.init_node(1)
 
 		self.env.run_command(2, ["python3", 
-			OutOfOrderPatchTests.DTN_SOURCE_DIR + "/test-env/packet_forwarder.py",
-			"-p", OutOfOrderPatchTests.TEST_PORT,
+			PatchTests.DTN_SOURCE_DIR + "/test-env/packet_forwarder.py",
+			"-p", PatchTests.TEST_PORT,
 			"-s", self.env.get_node_ip(0),
 			"-k", "4"],
 			False)
@@ -165,18 +168,73 @@ class OutOfOrderPatchTests(AbstractTest):
 
 		self.env.finish()
 
+	# This test sends conflicting patches (from node 0 to node 1):
+	# node0:
+	# commit1, commit2
+	# node1:
+	#
+	def test5(self):
+		self.setup_dirs()
+
+		self.init_node(0)
+
+		self.env.run_command(2, ["python3", 
+			PatchTests.DTN_SOURCE_DIR + "/test-env/packet_forwarder.py",
+			"-p", PatchTests.TEST_PORT,
+			"-s", self.env.get_node_ip(1),
+			"-k", "2"],
+			False)
+
+		time.sleep(5)
+
+		self.write_to_file(self.node_dir_path(0) + "/conflict", "1")
+		self.write_to_file(self.node_dir_path(0) + "/conflict", "22")
+
+		time.sleep(5)
+		
+		self.init_node(1)
+
+		time.sleep(5)
+
+		# This should trigger packet forwarder
+		self.write_to_file(self.node_dir_path(1) + "/conflict", "9999999")
+
+		time.sleep(5)
+
+		self.check_file_content(self.node_dir_path(0) + "/conflict" + self.node_name(0), "22")
+		self.check_file_content(self.node_dir_path(0) + "/conflict" + self.node_name(1), "9999999")
+
+		self.check_file_content(self.node_dir_path(1) + "/conflict" + self.node_name(0), "22")
+		self.check_file_content(self.node_dir_path(1) + "/conflict" + self.node_name(1), "9999999")
+
+		self.write_to_file(self.node_dir_path(0) + "/conflict" + self.node_name(0), "3333")
+		self.write_to_file(self.node_dir_path(0) + "/conflict" + self.node_name(1), "4444")
+
+		time.sleep(5)
+
+		self.check_file_content(self.node_dir_path(0) + "/conflict" + self.node_name(0), "3333")
+		self.check_file_content(self.node_dir_path(0) + "/conflict" + self.node_name(1), "4444")
+
+		self.check_file_content(self.node_dir_path(1) + "/conflict" + self.node_name(0), "3333")
+		self.check_file_content(self.node_dir_path(1) + "/conflict" + self.node_name(1), "4444")
+
+		self.env.finish()
+
 if __name__ == "__main__":
 	basic_tests = BasicTests("c3.json")
 	basic_tests.test1()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test1()
+	patch_tests = PatchTests("c3.json")
+	patch_tests.test1()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test2()
+	patch_tests = PatchTests("c3.json")
+	patch_tests.test2()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test3()
+	patch_tests = PatchTests("c3.json")
+	patch_tests.test3()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test4()
+	patch_tests = PatchTests("c3.json")
+	patch_tests.test4()
+
+	patch_tests = PatchTests("c3.json")
+	patch_tests.test5()
