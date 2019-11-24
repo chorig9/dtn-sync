@@ -12,15 +12,14 @@ from serialization import Serializable
 
 RDIFF_EMPTY_SIGNATURE = b'rs\x016\x00\x00\x08\x00\x00\x00\x00\x08'
 
-def rdiff_empty_signature(signature_file):
-    with open(signature_file, 'wb') as f:
-        f.write(RDIFF_EMPTY_SIGNATURE)
+def rdiff_empty_signature():
+    return RDIFF_EMPTY_SIGNATURE
 
-def rdiff_signature(file, signature_file):
-    return utils.run_command(["rdiff", "signature", file, signature_file])
+def rdiff_signature(file):
+    return utils.run_command(["rdiff", "signature", file, "-"])
 
-def rdiff_delta(signature_file, file):
-    return utils.run_command(["rdiff", "delta", signature_file, file])
+def rdiff_delta(signature, file):
+    return utils.run_command(["rdiff", "delta", "-", file], signature)
 
 def rdiff_delta_apply(file, delta, new_file):
     return utils.run_command(["rdiff", "patch", file, "-", new_file], delta)
@@ -36,6 +35,7 @@ class Commit(Serializable):
 class VersionHistory(Serializable):
     def __init__(self):
         self.commits = []
+        self.signatures = [] #XXX: signatures can be prunned sometimes
 
 
 # Class representing patch to a file. Holds basename of file, commit info and delta
@@ -54,11 +54,9 @@ class FileVersionControl:
         self.metapath = metapath
 
         self.patched_file_path = os.path.join(metapath, os.path.basename(self.file_path) + ".new")
-        self.signature_file_path = os.path.join(metapath, os.path.basename(self.file_path) + ".signature")
         self.version_history_file_path = os.path.join(metapath, os.path.basename(self.file_path) + ".version")
 
         self.__init_file()
-        self.__init_signature()
         self.__init_version()
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -77,11 +75,6 @@ class FileVersionControl:
             open(tmp, 'w').close()
             os.rename(tmp, self.file_path)
 
-    def __init_signature(self):
-        # Create empty signature if not exists
-        if not os.path.exists(self.signature_file_path):
-            rdiff_empty_signature(self.signature_file_path)
-
     def __init_version(self):
         # Load version from file or create empty version if file does not exist
         if not os.path.exists(self.version_history_file_path):
@@ -98,7 +91,13 @@ class FileVersionControl:
 
     # Returns diff between current version and version represented by signature file
     def __get_delta(self):
-        return rdiff_delta(self.signature_file_path, self.file_path)
+        signature = None
+        if len(self.version_history.signatures) > 0:
+            signature = self.version_history.signatures[-1]
+        else:
+            signature = rdiff_empty_signature()
+
+        return rdiff_delta(signature, self.file_path)
 
     def __waiting_patch_location(self, commit_id):
         return os.path.join(self.metapath, os.path.basename(self.file_path) + ".patch" + str(commit_id))
@@ -141,19 +140,20 @@ class FileVersionControl:
     # stored in self.signature_file_path. If signatures do not match we perform
     # recovery
     def commit(self):
+        delta = self.__get_delta()
+        signature = rdiff_signature(self.file_path)
+
         # Commit changes
         commit = self.__create_commit()
         self.version_history.commits.append(commit)
+        self.version_history.signatures.append(signature)
         self.__flush_version()
 
         # Create patch
         patch = FilePatch()
         patch.file_basename = os.path.basename(self.file_path)
-        patch.delta = self.__get_delta()
+        patch.delta = delta
         patch.commits = self.version_history.commits
-
-        # Update local signature
-        rdiff_signature(self.file_path, self.signature_file_path)
 
         # XXX: what if application crashes here? Should we handle that?
         # Patch won't be send to other nodes. We could have some "flag" stored on-disk
@@ -191,8 +191,6 @@ class FileVersionControl:
         os.rename(tmp_copy_location, new_filename1)
         os.rename(self.file_path, new_filename2)
 
-        # XXX: Adjust version file, signature file etc.
-
     # Applies patch (obtained from remote commit)
     def apply_patch(self, patch):
         # If signature do not match it means that file is either being
@@ -216,6 +214,8 @@ class FileVersionControl:
             # for solutions (replace itself is atomic operation)
             os.replace(self.patched_file_path, self.file_path)
             self.version_history.commits = patch.commits
+            self.version_history.signatures.append(rdiff_signature(self.file_path))
+            self.__flush_version()
         elif common_commits == len(self.version_history.commits) and common_commits == len(patch.commits):
             logging.debug("VCS-apply_patch: duplicate")
             # Duplicated patch
@@ -250,10 +250,6 @@ class FileVersionControl:
         else:
             logging.debug("VCS-apply_patch: conflict")
             self.__resolve_conflict(patch)
-
-        # Update local version and signature
-        self.__flush_version()
-        rdiff_signature(self.file_path, self.signature_file_path)
 
     def __common_commits_n(self, local_commits, remote_commits):
         n_commits = min(len(local_commits), len(remote_commits))
