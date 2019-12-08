@@ -3,3 +3,4 @@
 !.gitattributes
 *.d
 *.pyc
+certs/

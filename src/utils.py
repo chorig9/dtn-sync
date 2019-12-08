@@ -47,4 +47,4 @@ def get_file_checksum(file):
     return output[0:40]
 
 def get_node_name():
-    return "TODO"
+    return run_command(["hostname"]).decode('utf-8').strip()
