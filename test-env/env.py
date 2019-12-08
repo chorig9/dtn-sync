@@ -73,6 +73,9 @@ class Env():
         self.nodes[node]["obj"].cmd(["ip", 'l', 'set', self.envParser.dev_prefix + str(net), 'up'])
         self.nodes[node]["curr_net"] = net
 
+    def get_curr_net(self, node):
+        return str(self.envParser.dev_prefix) + str(self.nodes[node]["curr_net"])
+
     '''options:
         delay TIME [ JITTER [CORRELATION]] [distribution {uniform|normal|pareto|paretonormal} ]
         corrupt PERCENT [CORRELATION]

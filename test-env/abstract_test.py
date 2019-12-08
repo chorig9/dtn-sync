@@ -9,7 +9,7 @@ class AbstractTest(ABC):
             with open(env_file) as f:
                 self.config = json.load(f)
         else:
-            self.loadConfig()
+            self.load_config()
 
         self.env = Env(self.config)
 

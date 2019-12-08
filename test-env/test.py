@@ -22,6 +22,9 @@ class OutOfOrderPatchTests(AbstractTest):
 	TEST_PORT = "1234"
 	DTN_SOURCE_DIR = os.path.dirname(os.path.abspath(__file__)) + "/.."
 
+	def src_dir_path(self, node):
+		return OutOfOrderPatchTests.DTN_SOURCE_DIR + ("/src%d" % node)
+
 	def node_dir_path(self, node):
 		return "/tmp/test_node%d" % node
 
@@ -31,17 +34,30 @@ class OutOfOrderPatchTests(AbstractTest):
 	def setup_dirs(self):
 		try:
 			shutil.rmtree(self.node_dir_path(0))
+		except Exception as e:
+			pass
+		try:
 			shutil.rmtree(self.node_dir_path(1))
+		except Exception as e:
+			pass
+		try:
+			shutil.rmtree(self.src_dir_path(0))
+		except Exception as e:
+			pass
+		try:
+			shutil.rmtree(self.src_dir_path(1))
 		except Exception as e:
 			pass
 
 		os.mkdir(self.node_dir_path(0))
 		os.mkdir(self.node_dir_path(1))
+		shutil.copytree(OutOfOrderPatchTests.DTN_SOURCE_DIR + "/src", self.src_dir_path(0))
+		shutil.copytree(OutOfOrderPatchTests.DTN_SOURCE_DIR + "/src", self.src_dir_path(1))
 
 	def init_node(self, node):
 		self.env.run_command(node, ["python3", 
-			OutOfOrderPatchTests.DTN_SOURCE_DIR + "/src/main.py",
-			"-p", OutOfOrderPatchTests.TEST_PORT,
+			self.src_dir_path(node) + "/main.py",
+			"-i", self.env.get_curr_net(node),
 			"-d", self.node_dir_path(node),
 			"--stdout", self.node_log_file(node),
 			"--log", "debug"],
@@ -164,6 +180,12 @@ class OutOfOrderPatchTests(AbstractTest):
 		self.check_file_content(self.node_dir_path(1) + "/out-of-order", "ABABABABABABABAB")
 
 		self.env.finish()
+
+	def cleanup(self):
+		if (os.path.isdir(self.src_dir_path(0))):
+			shutil.rmtree(self.src_dir_path(0))
+		if (os.path.isdir(self.src_dir_path(1))):
+			shutil.rmtree(self.src_dir_path(1))
 
 if __name__ == "__main__":
 	basic_tests = BasicTests("c3.json")

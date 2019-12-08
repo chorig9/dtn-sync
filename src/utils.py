@@ -48,3 +48,16 @@ def get_file_checksum(file):
 
 def get_node_name():
     return "TODO"
+
+def generate_dtn_config(interfaces):
+    f = open(os.path.abspath(os.path.dirname(__file__)) + "/dtn.conf", "w+")
+    counter = 0
+    interfaces_list = "net_interfaces ="
+    for interface in interfaces:
+        f.write("net_lan" + str(counter) + "_interface = " + interface + "\n")
+        interfaces_list = interfaces_list + " lan" + str(counter)
+        counter = counter + 1
+
+    f.write(interfaces_list + "\n")
+    f.write("routing = epidemic\n")
+    f.close()
