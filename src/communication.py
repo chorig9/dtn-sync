@@ -29,7 +29,9 @@ class Communicator:
         threading.Thread(target=self.accept_trigger).start()
 
     def run_daemon(self):
-        utils.run_command(['dtnd', '-c', './dtn.conf'])
+        cur_dir = os.path.abspath(os.path.dirname(__file__))
+        logging.info(cur_dir)
+        utils.run_command(['dtnd', '-c', cur_dir + '/dtn.conf'])
 
     def accept_trigger(self):
         self.sock.listen(1)
@@ -48,8 +50,8 @@ class Communicator:
     def listen(self):
         cur_dir = os.path.abspath(os.path.dirname(__file__))
         callback_path = cur_dir + '/callback.sh'
-        utils.run_command(['dtntrigger', 'pager', callback_path])
+        utils.run_command(['dtntrigger', 'pager', '-g', 'dtn://group', callback_path])
 
     def send(self, patch_file_path):
         # Broadcast data
-        utils.run_command(['dtnsend', 'dtn://CoreNode2/pager', patch_file_path])
+        utils.run_command(['dtnsend', '-g', 'dtn://group', patch_file_path])
