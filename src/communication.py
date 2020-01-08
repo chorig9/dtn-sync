@@ -30,8 +30,7 @@ class Communicator:
 
     def run_daemon(self):
         cur_dir = os.path.abspath(os.path.dirname(__file__))
-        logging.info(cur_dir)
-        utils.run_command(['dtnd', '-c', cur_dir + '/dtn.conf'])
+        utils.run_command(['dtnd', '-D', '-c', cur_dir + '/dtn.conf'])
 
     def accept_trigger(self):
         self.sock.listen(1)
@@ -44,6 +43,7 @@ class Communicator:
                 connection.close()
 
             with open(data, 'rb') as f:
+                logging.info("RECV: " + data)
                 buffer = f.read()
                 self.on_receive_callback(buffer)
 

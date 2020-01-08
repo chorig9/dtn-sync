@@ -4,10 +4,12 @@ patchfile_name="${cur_dir}/patch_file_$(date +%s)"
 
 touch $patchfile_name
 
+echo "$patchfile_name" > /tmp/xxx1
+
 while IFS= read -r -d '' line; do
     printf '%s\0' "$line" >> "$patchfile_name"
 done < <(cat $1)
 printf "$line" >> "$patchfile_name"
 
 python3 "${cur_dir}/callback.py" $patchfile_name
-rm $patchfile_name
+# rm $patchfile_name

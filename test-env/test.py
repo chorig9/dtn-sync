@@ -84,9 +84,19 @@ class OutOfOrderPatchTests(AbstractTest):
 		# XXX: potentially can be replaced with waiting for logs to contain "Started"
 		time.sleep(5)
 
-		self.write_to_file(self.node_dir_path(0) + "/file", "TEST1")
+		self.env.run_command(0, ["dtnping", "dtn://CoreNode2/echo"], False)
+		self.env.run_command(0, ["dtnping", "dtn://group"], False)
 
 		time.sleep(5)
+
+		self.env.run_command(1, ["dtnping", "dtn://CoreNode1/echo"], False)
+		self.env.run_command(1, ["dtnping", "dtn://group"], False)
+
+		time.sleep(5)
+
+		self.write_to_file(self.node_dir_path(0) + "/file", "TEST1")
+
+		time.sleep(20)
 
 		self.check_file_content(self.node_dir_path(0) + "/file", "TEST1")
 		self.check_file_content(self.node_dir_path(1) + "/file", "TEST1")
