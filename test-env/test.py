@@ -188,17 +188,17 @@ class OutOfOrderPatchTests(AbstractTest):
 			shutil.rmtree(self.src_dir_path(1))
 
 if __name__ == "__main__":
-	basic_tests = BasicTests("c3.json")
-	basic_tests.test1()
+	# basic_tests = BasicTests("c3.json")
+	# basic_tests.test1()
 
 	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
 	out_of_order_patch_tests.test1()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test2()
+	# out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
+	# out_of_order_patch_tests.test2()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test3()
+	# out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
+	# out_of_order_patch_tests.test3()
 
-	out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
-	out_of_order_patch_tests.test4()
+	# out_of_order_patch_tests = OutOfOrderPatchTests("c3.json")
+	# out_of_order_patch_tests.test4()

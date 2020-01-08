@@ -10,7 +10,7 @@ import monitor
 # Class which monitores changes to local files and sends updates to other DTN nodes.
 class SyncWorker:
     def __init__(self, directory):
-        self.comm = communication.Communicator()
+        self.comm = communication.Communicator(self.on_data_received)
         self.directory = directory
         self.vcs = vcs.VCS(directory)
         self.monitor = monitor.Monitor(self.directory, self)
@@ -39,9 +39,10 @@ class SyncWorker:
                 patch = file_vcs.commit()
 
                 patch_file_path = self.directory + '/.sync/patch_file'
-                f = open(patch_file_path, 'wb+')
-                f.write(patch.to_bytes())
-                f.close()
+
+                with open(patch_file_path, 'wb') as f:
+                    f.write(patch.to_bytes())
+
                 self.comm.send(patch_file_path)
                 os.remove(patch_file_path)
         except Exception:

@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 import sys
-import synchronization
 import os
-import vcs
+import socket
+import sys
 
 def main():
-    f = open(os.path.abspath(os.path.dirname(__file__)) + "/workdir.txt", "r")
-    workdir = f.read()
-    f.close()
-    
-    v= vcs.VCS(workdir)
+    # Create a TCP/IP socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    f = open(sys.argv[1], 'rb')
-    b = f.read()
-    f.close()
+    # Connect the socket to the port where the server is listening
+    server_address = ('localhost', 10000)
+    sock.connect(server_address)
 
-    patch = vcs.FilePatch.from_bytes(b)
-
-    with v.file_version_control(patch.file_basename) as file_vcs:
-        file_vcs.apply_patch(patch)
-
+    try:
+        message = str.encode(sys.argv[1])
+        sock.sendall(message)
+    finally:
+        sock.close()
 
 if __name__ == '__main__':
     main()
